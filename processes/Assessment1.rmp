@@ -12,10 +12,10 @@
     <parameter key="process_duration_for_mail" value="30"/>
     <parameter key="encoding" value="SYSTEM"/>
     <process expanded="true">
-      <operator activated="true" class="retrieve" compatibility="9.8.001" expanded="true" height="68" name="Retrieve Titanic" width="90" x="45" y="238">
+      <operator activated="true" class="retrieve" compatibility="9.8.001" expanded="true" height="68" name="Retrieve Titanic" width="90" x="45" y="187">
         <parameter key="repository_entry" value="//Samples/data/Titanic"/>
       </operator>
-      <operator activated="true" class="subprocess" compatibility="9.8.001" expanded="true" height="124" name="Data Preprocessing" width="90" x="179" y="238">
+      <operator activated="true" breakpoints="after" class="subprocess" compatibility="9.8.001" expanded="true" height="82" name="Data Preprocessing" width="90" x="112" y="34">
         <process expanded="true">
           <operator activated="true" class="filter_examples" compatibility="9.8.001" expanded="true" height="103" name="Filter Examples" width="90" x="112" y="34">
             <parameter key="parameter_expression" value=""/>
@@ -67,42 +67,125 @@
             <parameter key="target_role" value="label"/>
             <list key="set_additional_roles"/>
           </operator>
-          <operator activated="true" class="multiply" compatibility="9.8.001" expanded="true" height="103" name="Multiply" width="90" x="447" y="187"/>
-          <operator activated="true" class="split_data" compatibility="9.8.001" expanded="true" height="103" name="Split Data" width="90" x="581" y="34">
-            <enumeration key="partitions">
-              <parameter key="ratio" value="0.7"/>
-              <parameter key="ratio" value="0.3"/>
-            </enumeration>
-            <parameter key="sampling_type" value="automatic"/>
-            <parameter key="use_local_random_seed" value="false"/>
-            <parameter key="local_random_seed" value="1992"/>
-          </operator>
           <connect from_port="in 1" to_op="Filter Examples" to_port="example set input"/>
           <connect from_op="Filter Examples" from_port="example set output" to_op="Select Attributes" to_port="example set input"/>
           <connect from_op="Select Attributes" from_port="example set output" to_op="Normalize" to_port="example set input"/>
           <connect from_op="Normalize" from_port="example set output" to_op="Set Role" to_port="example set input"/>
-          <connect from_op="Set Role" from_port="example set output" to_op="Multiply" to_port="input"/>
-          <connect from_op="Multiply" from_port="output 1" to_op="Split Data" to_port="example set"/>
-          <connect from_op="Multiply" from_port="output 2" to_port="out 3"/>
-          <connect from_op="Split Data" from_port="partition 1" to_port="out 1"/>
-          <connect from_op="Split Data" from_port="partition 2" to_port="out 2"/>
+          <connect from_op="Set Role" from_port="example set output" to_port="out 1"/>
           <portSpacing port="source_in 1" spacing="0"/>
           <portSpacing port="source_in 2" spacing="0"/>
           <portSpacing port="sink_out 1" spacing="0"/>
           <portSpacing port="sink_out 2" spacing="0"/>
-          <portSpacing port="sink_out 3" spacing="0"/>
-          <portSpacing port="sink_out 4" spacing="0"/>
         </process>
       </operator>
-      <operator activated="true" class="multiply" compatibility="9.8.001" expanded="true" height="124" name="Multiply (Training Data)" width="90" x="380" y="85"/>
-      <operator activated="true" class="multiply" compatibility="9.8.001" expanded="true" height="124" name="Multiply (Testing Data)" width="90" x="380" y="289"/>
-      <operator activated="true" class="multiply" compatibility="9.8.001" expanded="true" height="145" name="Multiply (Actual Data)" width="90" x="380" y="493"/>
-      <operator activated="true" class="subprocess" compatibility="9.8.001" expanded="true" height="124" name="Decision Tree SB" width="90" x="782" y="187">
+      <operator activated="true" class="multiply" compatibility="9.8.001" expanded="true" height="103" name="Multiply" width="90" x="179" y="187"/>
+      <operator activated="true" class="multiply" compatibility="9.8.001" expanded="true" height="124" name="Multiply (Actual Data)" width="90" x="447" y="442"/>
+      <operator activated="true" class="compare_rocs" compatibility="9.8.001" expanded="true" height="82" name="Compare ROCs" width="90" x="849" y="646">
+        <parameter key="number_of_folds" value="10"/>
+        <parameter key="split_ratio" value="0.7"/>
+        <parameter key="sampling_type" value="stratified sampling"/>
+        <parameter key="use_local_random_seed" value="false"/>
+        <parameter key="local_random_seed" value="1992"/>
+        <parameter key="use_example_weights" value="true"/>
+        <parameter key="roc_bias" value="optimistic"/>
+        <process expanded="true">
+          <operator activated="true" class="rule_induction" compatibility="9.8.001" expanded="true" height="82" name="Rule Induction (ROC)" width="90" x="581" y="34">
+            <parameter key="criterion" value="information_gain"/>
+            <parameter key="sample_ratio" value="0.9"/>
+            <parameter key="pureness" value="0.9"/>
+            <parameter key="minimal_prune_benefit" value="0.25"/>
+            <parameter key="use_local_random_seed" value="false"/>
+            <parameter key="local_random_seed" value="1992"/>
+          </operator>
+          <operator activated="true" class="concurrency:parallel_decision_tree" compatibility="9.8.001" expanded="true" height="103" name="Decision Tree (ROC)" width="90" x="581" y="136">
+            <parameter key="criterion" value="gini_index"/>
+            <parameter key="maximal_depth" value="4"/>
+            <parameter key="apply_pruning" value="true"/>
+            <parameter key="confidence" value="0.1"/>
+            <parameter key="apply_prepruning" value="true"/>
+            <parameter key="minimal_gain" value="0.01"/>
+            <parameter key="minimal_leaf_size" value="2"/>
+            <parameter key="minimal_size_for_split" value="4"/>
+            <parameter key="number_of_prepruning_alternatives" value="3"/>
+          </operator>
+          <operator activated="true" class="h2o:logistic_regression" compatibility="9.8.001" expanded="true" height="124" name="Logistic Regression (ROC)" width="90" x="581" y="340">
+            <parameter key="solver" value="AUTO"/>
+            <parameter key="reproducible" value="false"/>
+            <parameter key="maximum_number_of_threads" value="4"/>
+            <parameter key="use_regularization" value="false"/>
+            <parameter key="lambda" value="5.393079404586947E307"/>
+            <parameter key="lambda_search" value="false"/>
+            <parameter key="number_of_lambdas" value="0"/>
+            <parameter key="lambda_min_ratio" value="0.0"/>
+            <parameter key="early_stopping" value="true"/>
+            <parameter key="stopping_rounds" value="3"/>
+            <parameter key="stopping_tolerance" value="0.001"/>
+            <parameter key="standardize" value="true"/>
+            <parameter key="non-negative_coefficients" value="false"/>
+            <parameter key="add_intercept" value="true"/>
+            <parameter key="compute_p-values" value="true"/>
+            <parameter key="remove_collinear_columns" value="true"/>
+            <parameter key="missing_values_handling" value="MeanImputation"/>
+            <parameter key="max_iterations" value="0"/>
+            <parameter key="max_runtime_seconds" value="0"/>
+          </operator>
+          <operator activated="true" class="concurrency:parallel_random_forest" compatibility="9.8.001" expanded="true" height="103" name="Random Forest" width="90" x="581" y="238">
+            <parameter key="number_of_trees" value="100"/>
+            <parameter key="criterion" value="gain_ratio"/>
+            <parameter key="maximal_depth" value="10"/>
+            <parameter key="apply_pruning" value="false"/>
+            <parameter key="confidence" value="0.1"/>
+            <parameter key="apply_prepruning" value="false"/>
+            <parameter key="minimal_gain" value="0.01"/>
+            <parameter key="minimal_leaf_size" value="2"/>
+            <parameter key="minimal_size_for_split" value="4"/>
+            <parameter key="number_of_prepruning_alternatives" value="3"/>
+            <parameter key="random_splits" value="false"/>
+            <parameter key="guess_subset_ratio" value="true"/>
+            <parameter key="subset_ratio" value="0.2"/>
+            <parameter key="voting_strategy" value="confidence vote"/>
+            <parameter key="use_local_random_seed" value="false"/>
+            <parameter key="local_random_seed" value="1992"/>
+            <parameter key="enable_parallel_execution" value="true"/>
+          </operator>
+          <connect from_port="train 1" to_op="Rule Induction (ROC)" to_port="training set"/>
+          <connect from_port="train 2" to_op="Decision Tree (ROC)" to_port="training set"/>
+          <connect from_port="train 3" to_op="Random Forest" to_port="training set"/>
+          <connect from_port="train 4" to_op="Logistic Regression (ROC)" to_port="training set"/>
+          <connect from_op="Rule Induction (ROC)" from_port="model" to_port="model 1"/>
+          <connect from_op="Decision Tree (ROC)" from_port="model" to_port="model 2"/>
+          <connect from_op="Logistic Regression (ROC)" from_port="model" to_port="model 3"/>
+          <connect from_op="Random Forest" from_port="model" to_port="model 4"/>
+          <portSpacing port="source_train 1" spacing="0"/>
+          <portSpacing port="source_train 2" spacing="0"/>
+          <portSpacing port="source_train 3" spacing="0"/>
+          <portSpacing port="source_train 4" spacing="0"/>
+          <portSpacing port="source_train 5" spacing="0"/>
+          <portSpacing port="sink_model 1" spacing="0"/>
+          <portSpacing port="sink_model 2" spacing="0"/>
+          <portSpacing port="sink_model 3" spacing="0"/>
+          <portSpacing port="sink_model 4" spacing="0"/>
+          <portSpacing port="sink_model 5" spacing="0"/>
+        </process>
+      </operator>
+      <operator activated="true" class="split_data" compatibility="9.8.001" expanded="true" height="103" name="Split Data" width="90" x="246" y="34">
+        <enumeration key="partitions">
+          <parameter key="ratio" value="0.7"/>
+          <parameter key="ratio" value="0.3"/>
+        </enumeration>
+        <parameter key="sampling_type" value="automatic"/>
+        <parameter key="use_local_random_seed" value="false"/>
+        <parameter key="local_random_seed" value="1992"/>
+      </operator>
+      <operator activated="true" class="multiply" compatibility="9.8.001" expanded="true" height="103" name="Multiply (Testing Data)" width="90" x="447" y="238"/>
+      <operator activated="true" class="multiply" compatibility="9.8.001" expanded="true" height="103" name="Multiply (Training Data)" width="90" x="447" y="34"/>
+      <operator activated="true" class="subprocess" compatibility="9.8.001" expanded="true" height="124" name="Decision Tree SB" width="90" x="849" y="34">
         <process expanded="true">
           <operator activated="true" class="concurrency:optimize_parameters_grid" compatibility="9.8.001" expanded="true" height="124" name="Optimize Parameters (Decision Tree)" width="90" x="179" y="442">
             <list key="parameters">
               <parameter key="Decision Tree (CV).criterion" value="gain_ratio,information_gain,gini_index,accuracy"/>
-              <parameter key="Decision Tree (CV).maximal_depth" value="[1;100.0;100;linear]"/>
+              <parameter key="Decision Tree (CV).maximal_depth" value="[1;100.0;10;linear]"/>
+              <parameter key="Cross Validation.number_of_folds" value="[2.0;100.0;10;linear]"/>
             </list>
             <parameter key="error_handling" value="fail on error"/>
             <parameter key="log_performance" value="false"/>
@@ -113,7 +196,7 @@
               <operator activated="true" class="concurrency:cross_validation" compatibility="9.8.001" expanded="true" height="145" name="Cross Validation" width="90" x="313" y="187">
                 <parameter key="split_on_batch_attribute" value="false"/>
                 <parameter key="leave_one_out" value="false"/>
-                <parameter key="number_of_folds" value="10"/>
+                <parameter key="number_of_folds" value="51"/>
                 <parameter key="sampling_type" value="automatic"/>
                 <parameter key="use_local_random_seed" value="false"/>
                 <parameter key="local_random_seed" value="1992"/>
@@ -122,9 +205,9 @@
                   <operator activated="true" class="concurrency:parallel_decision_tree" compatibility="9.8.001" expanded="true" height="103" name="Decision Tree (CV)" width="90" x="179" y="34">
                     <parameter key="criterion" value="gain_ratio"/>
                     <parameter key="maximal_depth" value="10"/>
-                    <parameter key="apply_pruning" value="true"/>
+                    <parameter key="apply_pruning" value="false"/>
                     <parameter key="confidence" value="0.1"/>
-                    <parameter key="apply_prepruning" value="true"/>
+                    <parameter key="apply_prepruning" value="false"/>
                     <parameter key="minimal_gain" value="0.01"/>
                     <parameter key="minimal_leaf_size" value="2"/>
                     <parameter key="minimal_size_for_split" value="4"/>
@@ -148,7 +231,7 @@
                     <parameter key="classification_error" value="false"/>
                     <parameter key="kappa" value="false"/>
                     <parameter key="AUC (optimistic)" value="false"/>
-                    <parameter key="AUC" value="false"/>
+                    <parameter key="AUC" value="true"/>
                     <parameter key="AUC (pessimistic)" value="false"/>
                     <parameter key="precision" value="true"/>
                     <parameter key="recall" value="true"/>
@@ -219,7 +302,7 @@
             <parameter key="classification_error" value="false"/>
             <parameter key="kappa" value="false"/>
             <parameter key="AUC (optimistic)" value="false"/>
-            <parameter key="AUC" value="false"/>
+            <parameter key="AUC" value="true"/>
             <parameter key="AUC (pessimistic)" value="false"/>
             <parameter key="precision" value="true"/>
             <parameter key="recall" value="true"/>
@@ -250,7 +333,7 @@
             <parameter key="classification_error" value="false"/>
             <parameter key="kappa" value="false"/>
             <parameter key="AUC (optimistic)" value="false"/>
-            <parameter key="AUC" value="false"/>
+            <parameter key="AUC" value="true"/>
             <parameter key="AUC (pessimistic)" value="false"/>
             <parameter key="precision" value="true"/>
             <parameter key="recall" value="true"/>
@@ -293,7 +376,7 @@
           <portSpacing port="sink_out 4" spacing="0"/>
         </process>
       </operator>
-      <operator activated="true" class="subprocess" compatibility="9.8.001" expanded="true" height="124" name="Rule Induction SB" width="90" x="782" y="340">
+      <operator activated="false" class="subprocess" compatibility="9.8.001" expanded="true" height="124" name="Rule Induction SB" width="90" x="849" y="238">
         <process expanded="true">
           <operator activated="true" class="concurrency:optimize_parameters_grid" compatibility="9.8.001" expanded="true" height="124" name="Optimize Parameters (Rule Induction)" width="90" x="313" y="442">
             <list key="parameters">
@@ -309,7 +392,7 @@
               <operator activated="true" class="concurrency:cross_validation" compatibility="9.8.001" expanded="true" height="145" name="Cross Validation (RI)" width="90" x="380" y="85">
                 <parameter key="split_on_batch_attribute" value="false"/>
                 <parameter key="leave_one_out" value="false"/>
-                <parameter key="number_of_folds" value="41"/>
+                <parameter key="number_of_folds" value="71"/>
                 <parameter key="sampling_type" value="automatic"/>
                 <parameter key="use_local_random_seed" value="false"/>
                 <parameter key="local_random_seed" value="1992"/>
@@ -341,7 +424,7 @@
                     <parameter key="classification_error" value="false"/>
                     <parameter key="kappa" value="false"/>
                     <parameter key="AUC (optimistic)" value="false"/>
-                    <parameter key="AUC" value="false"/>
+                    <parameter key="AUC" value="true"/>
                     <parameter key="AUC (pessimistic)" value="false"/>
                     <parameter key="precision" value="true"/>
                     <parameter key="recall" value="true"/>
@@ -409,7 +492,7 @@
             <parameter key="classification_error" value="false"/>
             <parameter key="kappa" value="false"/>
             <parameter key="AUC (optimistic)" value="false"/>
-            <parameter key="AUC" value="false"/>
+            <parameter key="AUC" value="true"/>
             <parameter key="AUC (pessimistic)" value="false"/>
             <parameter key="precision" value="true"/>
             <parameter key="recall" value="true"/>
@@ -440,7 +523,7 @@
             <parameter key="classification_error" value="false"/>
             <parameter key="kappa" value="false"/>
             <parameter key="AUC (optimistic)" value="false"/>
-            <parameter key="AUC" value="false"/>
+            <parameter key="AUC" value="true"/>
             <parameter key="AUC (pessimistic)" value="false"/>
             <parameter key="precision" value="true"/>
             <parameter key="recall" value="true"/>
@@ -483,12 +566,11 @@
           <portSpacing port="sink_out 4" spacing="0"/>
         </process>
       </operator>
-      <operator activated="true" class="subprocess" compatibility="9.8.001" expanded="true" height="124" name="Logistic Regression SB" width="90" x="782" y="493">
+      <operator activated="true" class="subprocess" compatibility="9.8.001" expanded="true" height="124" name="Logistic Regression SB" width="90" x="849" y="442">
         <process expanded="true">
           <operator activated="true" class="concurrency:optimize_parameters_grid" compatibility="9.8.001" expanded="true" height="124" name="Optimize Parameters (Logistic Regression)" width="90" x="313" y="442">
             <list key="parameters">
               <parameter key="Cross Validation (LR).number_of_folds" value="[2.0;100.0;10;linear]"/>
-              <parameter key="Logistic Regression (CV).lambda" value="[0.0;1.7976931348623157E308;10;linear]"/>
             </list>
             <parameter key="error_handling" value="fail on error"/>
             <parameter key="log_performance" value="false"/>
@@ -499,7 +581,7 @@
               <operator activated="true" class="concurrency:cross_validation" compatibility="9.8.001" expanded="true" height="145" name="Cross Validation (LR)" width="90" x="380" y="85">
                 <parameter key="split_on_batch_attribute" value="false"/>
                 <parameter key="leave_one_out" value="false"/>
-                <parameter key="number_of_folds" value="2"/>
+                <parameter key="number_of_folds" value="31"/>
                 <parameter key="sampling_type" value="automatic"/>
                 <parameter key="use_local_random_seed" value="false"/>
                 <parameter key="local_random_seed" value="1992"/>
@@ -543,7 +625,7 @@
                     <parameter key="classification_error" value="false"/>
                     <parameter key="kappa" value="false"/>
                     <parameter key="AUC (optimistic)" value="false"/>
-                    <parameter key="AUC" value="false"/>
+                    <parameter key="AUC" value="true"/>
                     <parameter key="AUC (pessimistic)" value="false"/>
                     <parameter key="precision" value="true"/>
                     <parameter key="recall" value="true"/>
@@ -623,7 +705,7 @@
             <parameter key="classification_error" value="false"/>
             <parameter key="kappa" value="false"/>
             <parameter key="AUC (optimistic)" value="false"/>
-            <parameter key="AUC" value="false"/>
+            <parameter key="AUC" value="true"/>
             <parameter key="AUC (pessimistic)" value="false"/>
             <parameter key="precision" value="true"/>
             <parameter key="recall" value="true"/>
@@ -654,7 +736,7 @@
             <parameter key="classification_error" value="false"/>
             <parameter key="kappa" value="false"/>
             <parameter key="AUC (optimistic)" value="false"/>
-            <parameter key="AUC" value="false"/>
+            <parameter key="AUC" value="true"/>
             <parameter key="AUC (pessimistic)" value="false"/>
             <parameter key="precision" value="true"/>
             <parameter key="recall" value="true"/>
@@ -697,118 +779,26 @@
           <portSpacing port="sink_out 4" spacing="0"/>
         </process>
       </operator>
-      <operator activated="true" class="compare_rocs" compatibility="9.8.001" expanded="true" height="82" name="Compare ROCs" width="90" x="782" y="697">
-        <parameter key="number_of_folds" value="10"/>
-        <parameter key="split_ratio" value="0.7"/>
-        <parameter key="sampling_type" value="stratified sampling"/>
-        <parameter key="use_local_random_seed" value="false"/>
-        <parameter key="local_random_seed" value="1992"/>
-        <parameter key="use_example_weights" value="true"/>
-        <parameter key="roc_bias" value="optimistic"/>
-        <process expanded="true">
-          <operator activated="true" class="rule_induction" compatibility="9.8.001" expanded="true" height="82" name="Rule Induction (ROC)" width="90" x="581" y="34">
-            <parameter key="criterion" value="information_gain"/>
-            <parameter key="sample_ratio" value="0.9"/>
-            <parameter key="pureness" value="0.9"/>
-            <parameter key="minimal_prune_benefit" value="0.25"/>
-            <parameter key="use_local_random_seed" value="false"/>
-            <parameter key="local_random_seed" value="1992"/>
-          </operator>
-          <operator activated="true" class="concurrency:parallel_decision_tree" compatibility="9.8.001" expanded="true" height="103" name="Decision Tree (ROC)" width="90" x="581" y="136">
-            <parameter key="criterion" value="gini_index"/>
-            <parameter key="maximal_depth" value="4"/>
-            <parameter key="apply_pruning" value="true"/>
-            <parameter key="confidence" value="0.1"/>
-            <parameter key="apply_prepruning" value="true"/>
-            <parameter key="minimal_gain" value="0.01"/>
-            <parameter key="minimal_leaf_size" value="2"/>
-            <parameter key="minimal_size_for_split" value="4"/>
-            <parameter key="number_of_prepruning_alternatives" value="3"/>
-          </operator>
-          <operator activated="true" class="h2o:logistic_regression" compatibility="9.8.001" expanded="true" height="124" name="Logistic Regression (ROC)" width="90" x="581" y="340">
-            <parameter key="solver" value="AUTO"/>
-            <parameter key="reproducible" value="false"/>
-            <parameter key="maximum_number_of_threads" value="4"/>
-            <parameter key="use_regularization" value="false"/>
-            <parameter key="lambda" value="3.5953862697246315E307"/>
-            <parameter key="lambda_search" value="false"/>
-            <parameter key="number_of_lambdas" value="0"/>
-            <parameter key="lambda_min_ratio" value="0.0"/>
-            <parameter key="early_stopping" value="true"/>
-            <parameter key="stopping_rounds" value="3"/>
-            <parameter key="stopping_tolerance" value="0.001"/>
-            <parameter key="standardize" value="true"/>
-            <parameter key="non-negative_coefficients" value="false"/>
-            <parameter key="add_intercept" value="true"/>
-            <parameter key="compute_p-values" value="true"/>
-            <parameter key="remove_collinear_columns" value="true"/>
-            <parameter key="missing_values_handling" value="MeanImputation"/>
-            <parameter key="max_iterations" value="0"/>
-            <parameter key="max_runtime_seconds" value="0"/>
-          </operator>
-          <operator activated="true" class="concurrency:parallel_random_forest" compatibility="9.8.001" expanded="true" height="103" name="Random Forest" width="90" x="581" y="238">
-            <parameter key="number_of_trees" value="100"/>
-            <parameter key="criterion" value="gain_ratio"/>
-            <parameter key="maximal_depth" value="10"/>
-            <parameter key="apply_pruning" value="false"/>
-            <parameter key="confidence" value="0.1"/>
-            <parameter key="apply_prepruning" value="false"/>
-            <parameter key="minimal_gain" value="0.01"/>
-            <parameter key="minimal_leaf_size" value="2"/>
-            <parameter key="minimal_size_for_split" value="4"/>
-            <parameter key="number_of_prepruning_alternatives" value="3"/>
-            <parameter key="random_splits" value="false"/>
-            <parameter key="guess_subset_ratio" value="true"/>
-            <parameter key="subset_ratio" value="0.2"/>
-            <parameter key="voting_strategy" value="confidence vote"/>
-            <parameter key="use_local_random_seed" value="false"/>
-            <parameter key="local_random_seed" value="1992"/>
-            <parameter key="enable_parallel_execution" value="true"/>
-          </operator>
-          <connect from_port="train 1" to_op="Rule Induction (ROC)" to_port="training set"/>
-          <connect from_port="train 2" to_op="Decision Tree (ROC)" to_port="training set"/>
-          <connect from_port="train 3" to_op="Random Forest" to_port="training set"/>
-          <connect from_port="train 4" to_op="Logistic Regression (ROC)" to_port="training set"/>
-          <connect from_op="Rule Induction (ROC)" from_port="model" to_port="model 1"/>
-          <connect from_op="Decision Tree (ROC)" from_port="model" to_port="model 2"/>
-          <connect from_op="Logistic Regression (ROC)" from_port="model" to_port="model 3"/>
-          <connect from_op="Random Forest" from_port="model" to_port="model 4"/>
-          <portSpacing port="source_train 1" spacing="0"/>
-          <portSpacing port="source_train 2" spacing="0"/>
-          <portSpacing port="source_train 3" spacing="0"/>
-          <portSpacing port="source_train 4" spacing="0"/>
-          <portSpacing port="source_train 5" spacing="0"/>
-          <portSpacing port="sink_model 1" spacing="0"/>
-          <portSpacing port="sink_model 2" spacing="0"/>
-          <portSpacing port="sink_model 3" spacing="0"/>
-          <portSpacing port="sink_model 4" spacing="0"/>
-          <portSpacing port="sink_model 5" spacing="0"/>
-        </process>
-      </operator>
       <connect from_op="Retrieve Titanic" from_port="output" to_op="Data Preprocessing" to_port="in 1"/>
-      <connect from_op="Data Preprocessing" from_port="out 1" to_op="Multiply (Training Data)" to_port="input"/>
-      <connect from_op="Data Preprocessing" from_port="out 2" to_op="Multiply (Testing Data)" to_port="input"/>
-      <connect from_op="Data Preprocessing" from_port="out 3" to_op="Multiply (Actual Data)" to_port="input"/>
-      <connect from_op="Multiply (Training Data)" from_port="output 1" to_op="Decision Tree SB" to_port="in 1"/>
-      <connect from_op="Multiply (Training Data)" from_port="output 2" to_op="Rule Induction SB" to_port="in 1"/>
-      <connect from_op="Multiply (Training Data)" from_port="output 3" to_op="Logistic Regression SB" to_port="in 1"/>
-      <connect from_op="Multiply (Testing Data)" from_port="output 1" to_op="Decision Tree SB" to_port="in 2"/>
-      <connect from_op="Multiply (Testing Data)" from_port="output 2" to_op="Rule Induction SB" to_port="in 2"/>
-      <connect from_op="Multiply (Testing Data)" from_port="output 3" to_op="Logistic Regression SB" to_port="in 2"/>
+      <connect from_op="Data Preprocessing" from_port="out 1" to_op="Multiply" to_port="input"/>
+      <connect from_op="Multiply" from_port="output 1" to_op="Split Data" to_port="example set"/>
+      <connect from_op="Multiply" from_port="output 2" to_op="Multiply (Actual Data)" to_port="input"/>
       <connect from_op="Multiply (Actual Data)" from_port="output 1" to_op="Decision Tree SB" to_port="in 3"/>
-      <connect from_op="Multiply (Actual Data)" from_port="output 2" to_op="Rule Induction SB" to_port="in 3"/>
-      <connect from_op="Multiply (Actual Data)" from_port="output 3" to_op="Logistic Regression SB" to_port="in 3"/>
-      <connect from_op="Multiply (Actual Data)" from_port="output 4" to_op="Compare ROCs" to_port="example set"/>
+      <connect from_op="Multiply (Actual Data)" from_port="output 2" to_op="Logistic Regression SB" to_port="in 3"/>
+      <connect from_op="Multiply (Actual Data)" from_port="output 3" to_op="Compare ROCs" to_port="example set"/>
+      <connect from_op="Compare ROCs" from_port="rocComparison" to_port="result 7"/>
+      <connect from_op="Split Data" from_port="partition 1" to_op="Multiply (Training Data)" to_port="input"/>
+      <connect from_op="Split Data" from_port="partition 2" to_op="Multiply (Testing Data)" to_port="input"/>
+      <connect from_op="Multiply (Testing Data)" from_port="output 1" to_op="Decision Tree SB" to_port="in 2"/>
+      <connect from_op="Multiply (Testing Data)" from_port="output 2" to_op="Logistic Regression SB" to_port="in 2"/>
+      <connect from_op="Multiply (Training Data)" from_port="output 1" to_op="Decision Tree SB" to_port="in 1"/>
+      <connect from_op="Multiply (Training Data)" from_port="output 2" to_op="Logistic Regression SB" to_port="in 1"/>
       <connect from_op="Decision Tree SB" from_port="out 1" to_port="result 1"/>
       <connect from_op="Decision Tree SB" from_port="out 2" to_port="result 2"/>
-      <connect from_op="Decision Tree SB" from_port="out 3" to_port="result 8"/>
-      <connect from_op="Rule Induction SB" from_port="out 1" to_port="result 3"/>
-      <connect from_op="Rule Induction SB" from_port="out 2" to_port="result 4"/>
-      <connect from_op="Rule Induction SB" from_port="out 3" to_port="result 9"/>
-      <connect from_op="Logistic Regression SB" from_port="out 1" to_port="result 6"/>
-      <connect from_op="Logistic Regression SB" from_port="out 2" to_port="result 7"/>
-      <connect from_op="Logistic Regression SB" from_port="out 3" to_port="result 10"/>
-      <connect from_op="Compare ROCs" from_port="rocComparison" to_port="result 5"/>
+      <connect from_op="Decision Tree SB" from_port="out 3" to_port="result 5"/>
+      <connect from_op="Logistic Regression SB" from_port="out 1" to_port="result 3"/>
+      <connect from_op="Logistic Regression SB" from_port="out 2" to_port="result 4"/>
+      <connect from_op="Logistic Regression SB" from_port="out 3" to_port="result 6"/>
       <portSpacing port="source_input 1" spacing="0"/>
       <portSpacing port="sink_result 1" spacing="0"/>
       <portSpacing port="sink_result 2" spacing="0"/>
@@ -818,9 +808,6 @@
       <portSpacing port="sink_result 6" spacing="0"/>
       <portSpacing port="sink_result 7" spacing="0"/>
       <portSpacing port="sink_result 8" spacing="0"/>
-      <portSpacing port="sink_result 9" spacing="0"/>
-      <portSpacing port="sink_result 10" spacing="0"/>
-      <portSpacing port="sink_result 11" spacing="0"/>
     </process>
   </operator>
 </process>
